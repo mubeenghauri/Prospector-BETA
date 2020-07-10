@@ -239,7 +239,10 @@ var scrapeProfile = () => {
         return data; 
 
     } else {
-        return false;
+        console.log("[SCRAPPER] Criteria not met : sales = "+saleTag);
+        setTimeout(()=>{
+            return "CriteriaNotMet";
+        }, 2000 );
     }
 }
 
@@ -248,17 +251,43 @@ var scrapeProfile = () => {
 
 chrome.runtime.onConnect.addListener( port => {
 
+    // as a port of synchronization 
+    // TO NOTE: this script (aka, content script)
+    // is loaded everytin a new tab opens (that is
+    // when the script is injected), therefore, 
+    // on every page change, the(se) variable(s) shall 
+    // be initialized. And we can be confident that 
+    // during the scope of the script, these wont change
+    // (unless explicitly done so)
+    var sentProfile = false;
+    var sentProfileData = false;
+
     console.assert(port.name == "main-port");
 
     port.onMessage.addListener((request) => {
+        console.log("[SCRAPPER] Got request: "+JSON.stringify(request));
         if( request.message === "getProfiles" ) {
-            console.log("[SCRAPPER] Looking for profiles");
-            var profiles = getProfiles();
-            console.log("[SCRAPPER] Extracted Profiles # "+profiles.length);
-            for(var i = 0; i < profiles.length; i++) {
-                console.log(profiles[i]);
+            if(!sentProfile){
+                console.log("[SCRAPPER] Looking for profiles");
+            
+                var profiles = false;
+                profiles = getProfiles();
+                console.log("[SCRAPPER] Extracted Profiles # "+profiles.length);
+                for(var i = 0; i < profiles.length; i++) {
+                    console.log(profiles[i]);
+                }
+
+                if(!profiles){
+                    // nothing to doo ;(
+                } else {
+                    setTimeout(() => {
+                        port.postMessage( { msg: "profiles", p: profiles} );
+                        sentProfile = true;
+                    }, 5000);
+                }
+            } else {
+                console.log("[SCRAPPER] already sent profile");
             }
-            port.postMessage( { msg: "profiles", p: profiles} );
         }
     });
     
@@ -266,13 +295,21 @@ chrome.runtime.onConnect.addListener( port => {
     // listen for Profile scrapping action
     port.onMessage.addListener((request) =>{
         if( request.action === "scrapeProfile" ){
-            console.log("[SCRAPPER] ACTION RECIEVED : scrapeProfile");
-            var profileData = scrapeProfile();
-            console.log("[SCRAPPER] Data Extracted "+JSON.stringify(profileData));
-            if( !profileData ) {
-                port.postMessage( { data: "profileData", jObj: false } );
+            if(!sentProfileData) {
+                console.log("[SCRAPPER] ACTION RECIEVED : scrapeProfile");
+                var profileData = scrapeProfile();
+                console.log("[SCRAPPER] Data Extracted "+JSON.stringify(profileData));
+                if( !profileData ) {
+                    //port.postMessage( { data: "profileData", jObj: false } );
+                    console.log("[SCRAPPER] hmm, scrapeProfile returned false obj :/", profileData);
+                } else if(profileData === "CriteriaNotMet"){
+                    port.postMessage( { data: "profileData", jObj: "CriteriaNotMet"} );
+                } else {
+                    port.postMessage( { data: "profileData", jObj: profileData } );
+                    sentProfileData = true;
+                }
             } else {
-                port.postMessage( { data: "profileData", jObj: profileData } );
+                console.log("[SCRAPPER] Already sent profile data")
             }
         }
     });
