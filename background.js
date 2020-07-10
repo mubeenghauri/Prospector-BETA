@@ -22,6 +22,11 @@
  *          - for email, go through facebook (arghhh) [REAL CHALLENGE]
  *          - once object is complete, send it to python API, which will save contents to csv
  * 
+ *          - REFACTOR code, use 'javasctipt OOP' for scrapper and backend implementation.
+ * 
+ * NOTES: this version, almost working, have to add a fix around to use case => (
+ *      what if the sales number does not meet our match , skip profile???
+ * )
  */
 
 
@@ -31,6 +36,7 @@ const ports = new Set;
 var tempObj = "";
 var messagePort = null;
 var recievedObj = false;
+var profileData = [];
 
 /** Start: Registering event listeners **/
 
@@ -59,9 +65,9 @@ chrome.runtime.onMessage.addListener((req, sender, sendResponse) => {
             console.log("At tab "+tab.url);
             if(tab.url.includes("zillow.com") && tab.url.includes("real-estate-agent")) {
                 if(!running){
-                   injectToCurrent();
+                   //injectToCurrent();
+                   running = true;
                 }
-    
                 messagePort = chrome.tabs.connect(tab.id, {name: "main-port"});
                 registerMessageListener();
                 console.log("[BACKEND] Connected to port");
@@ -87,16 +93,16 @@ chrome.tabs.onUpdated.addListener((tabid, changeInfo, tab) => {
 
     // if tabs are scwtiched, stop running !!! 
     // can start by engaging popup !!
-    if(!url.includes("zillow") || !url.includes("facebook.com")) {
+    if(!tab.url.includes("zillow.com")) {
+        console.log("[BACKEND][TABS LISTENER] NOT TARGET URL!!"+tab.url);
         running = false;
         return;
     }
 
     if( running ) {
         var url = tab.url;
-        
         if( url.includes("profile") ) {
-            //injectToCurrent();
+            injectToCurrent();
             messagePort = chrome.tabs.connect(tab.id, {name: "main-port"});
             registerMessageListener();
             // ask scrapper to scrape of required info and get it here.
@@ -106,6 +112,8 @@ chrome.tabs.onUpdated.addListener((tabid, changeInfo, tab) => {
         } else {
             console.log("[BACKEND][TABS LISTENER] found invalid link? : "+url);
         }
+    } else {
+        console.log("[BACKEND] not running ...");
     }
 });
 
@@ -117,21 +125,24 @@ function registerMessageListener() {
 
     messagePort.onDisconnect.addListener( smtng => {
         console.log("Port disconnected");
-
-        chrome.tabs.query({active: true}, tabs => {
-            let tab = tabs[0];
-            console.log("At tab "+tab.url);
-            if(tab.url.includes("zillow.com") && tab.url.includes("real-estate-agent")) {
-                // if(!running){
-                //     injectToCurrent();
-                // }  
-                messagePort = chrome.tabs.connect(tab.id, {name: "main-port"});
-                registerMessageListener();
-                if(messagePort) { 
-                    console.log("[BACKEND] Reconnected to port");
+        if(running){
+            chrome.tabs.query({active: true}, tabs => {
+                let tab = tabs[0];
+                //console.log("At tab "+tab.url);
+                if(tab.url.includes("zillow.com") && (tab.url.includes("real-estate-agent") || tab.url.includes("profile"))) {
+                    if(!running){
+                        injectToCurrent();
+                    }  
+                    messagePort = chrome.tabs.connect(tab.id, {name: "main-port"});
+                    registerMessageListener();
+                    if(messagePort) { 
+                        //console.log("[BACKEND] Reconnected to port");
+                    }
                 }
-            }
-        });
+            });
+        } else {
+            console.log("Not Running anymore, found profiles : ",profileData);
+        }
     });
 
     messagePort.onMessage.addListener( res => {
@@ -161,26 +172,34 @@ function registerMessageListener() {
             var hasAll = true;
             if(!jsonObj) {
                 // if no obj recieved, keep going through profiles;
-                console.log("[BACKEND][PROFILE] recieved null object, going through other profiles");
+                console.log("[BACKEND][PROFILE] recieved null object");
+                //iterateThroughProfiles();
+                return;
+            } else if(typeof jsonObj === "string" && jsonObj === "CriteriaNotMet"){
                 iterateThroughProfiles();
                 return;
-            }
-            if(tempObj.hasOwnProperty("name") && jsonObj.name == tempObj.name) {
-                // if our tempObj has been assigned, and we get jsonObj 
-                // with same values, skip below code
-                console.log("[BACKEND][PROFILE] recieved dupplicate : "+jsonObj.name);
-                return;
-            }
-            properties.forEach((val, index, arr) => {
-                if( ! jsonObj.hasOwnProperty(val) ) {
-                    hasAll = false;
+
+            } else {
+                if(profileData.includes(JSON.stringify(jsonObj))) {
+                    // if our tempObj has been assigned, and we get jsonObj 
+                    // with same values, skip below code
+                    console.log("[BACKEND][PROFILE] recieved dupplicate : "+jsonObj.name);
+
+                    return;
                 }
-            });
-            if(hasAll) {
-                tempObj = jsonObj;
-                console.log("[BACKEND][TABS LISTENER][PROFILE] SETTED TEMP OBJ TO : "+JSON.stringify(tempObj));
-                hasFacebook();
-                iterateThroughProfiles();
+                properties.forEach((val, index, arr) => {
+                    if( ! jsonObj.hasOwnProperty(val) ) {
+                        hasAll = false;
+                    }
+                });
+                if(hasAll) {
+                    tempObj = jsonObj;
+                    profileData.push(JSON.stringify(jsonObj));
+                    
+                    console.log("[BACKEND][TABS LISTENER][PROFILE] SETTED TEMP OBJ TO : "+JSON.stringify(tempObj));
+                    hasFacebook();
+                    iterateThroughProfiles();
+                }
             }
         }
     
