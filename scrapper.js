@@ -161,6 +161,16 @@
     //     }
     // }
 
+
+
+/**
+ * TODO: 
+ *      - make all message responses asynchronus ?
+ *      - refactor code, u know, make it like what that Youtube guy had
+ * 
+ */
+console.log("Hello from scrapper");
+
 var scrollEffect = () => {
     setTimeout(function(){
         for(var i = 0; i < 15; i++) {
@@ -178,80 +188,119 @@ var scrollEffect = () => {
 
 var getProfiles = () => {
     console.log("[Get Profile] Initiated");
-    var profileArray = [];
-    var profiles = document.getElementsByClassName("ldb-contact-name");
-   
-    for(var i = 0; i < profiles.length; i++) {
-        scrollEffect();
-        var link = profiles[i].getElementsByTagName('a')[0];
-        console.log("[GET PROFILES] Found Link : "+link["href"]);
-        profileArray.push(link["href"]);
-        scrollEffect();
-    }
-    return profileArray;
+    return new Promise(resolve => {
+        var profileArray = [];
+        var profiles = document.getElementsByClassName("ldb-contact-name");
+    
+        for(var i = 0; i < profiles.length; i++) {
+            scrollEffect();
+            var link = profiles[i].getElementsByTagName('a')[0];
+            console.log("[GET PROFILES] Found Link : "+link["href"]);
+            profileArray.push(link["href"]);
+            scrollEffect();
+        }
+        resolve(profileArray);
+    })
 }
 
-console.log("Hello from scrapper");
+
 
 var scrapeProfile = () => {
     console.log("[SCRAPPER][SCRAPEPROFILE] Initiated ...");
     // now we are at profile page.
     scrollEffect();
 
-    // check is sales last 12mo > 10
-    var saleTag = parseInt(document.getElementsByClassName("ctcd-item ctcd-item_sales")[0]
-        .innerText
-                        .split(' ')[0], 0);
-    scrollEffect();
-    console.log("[SCRAPPER][SCRAPEPROFILE] sales : "+saleTag);
-    if(saleTag >= 10) {
-        // we have 10 or more sales
-        // extract info needed
-        console.log("[SCRAPPER][SCRAPEPROFILE] have 10 or more sales");
-        scrollEffect();
+    return new Promise(resolve => {
+            // check is sales last 12mo > 10
+            var saleTag = parseInt(document.getElementsByClassName("ctcd-item ctcd-item_sales")[0]
+            .innerText
+                            .split(' ')[0], 0);
+            scrollEffect();
+            console.log("[SCRAPPER][SCRAPEPROFILE] sales : "+saleTag);
+            if(saleTag >= 10) {
+                // we have 10 or more sales
+                // extract info needed
+                console.log("[SCRAPPER][SCRAPEPROFILE] have 10 or more sales");
+                scrollEffect();
 
-        var url = document.location['href'];
-        var isPremium = document.getElementsByClassName("ctcd-agent-type zsg-content-item").length > 0 ? true : false;
+                var url = document.location['href'];
+                var isPremium = document.getElementsByClassName("ctcd-agent-type zsg-content-item").length > 0 ? true : false;
 
-        scrollEffect();
+                scrollEffect();
 
-        var name = document.getElementsByClassName("ctcd-user-name")[0].innerText;
-        console.log("[SCRAPPER][SCRAPEPROFILE] Found Name : "+name);
-        var zipCode = document.getElementsByClassName("postal-code")[0].innerText;
-        console.log("[SCRAPPER][SCRAPEPROFILE] Found zip : "+zipCode);
+                var name = document.getElementsByClassName("ctcd-user-name")[0].innerText;
+                console.log("[SCRAPPER][SCRAPEPROFILE] Found Name : "+name);
+                var zipCode = document.getElementsByClassName("postal-code")[0].innerText;
+                console.log("[SCRAPPER][SCRAPEPROFILE] Found zip : "+zipCode);
 
-        scrollEffect();
+                scrollEffect();
 
-        var fbUrl = document.getElementsByClassName("facebook").length > 0 ? document.getElementsByClassName("facebook")[0].parentElement.getAttribute("href") : "not found";
-        console.log("[SCRAPPER][SCRAPEPROFILE] Found fb : "+fbUrl);
-        
-        scrollEffect();
+                var fbUrl = document.getElementsByClassName("facebook").length > 0 ? document.getElementsByClassName("facebook")[0].parentElement.getAttribute("href") : "not found";
+                console.log("[SCRAPPER][SCRAPEPROFILE] Found fb : "+fbUrl);
+                
+                scrollEffect();
 
-        var data = {
-            "name": name,
-            "url": url,
-            "isPremium": isPremium,
-            "zipCode": zipCode,
-            "fbUrl": fbUrl
-        };
+                var data = {
+                    "name": name,
+                    "url": url,
+                    "isPremium": isPremium,
+                    "zipCode": zipCode,
+                    "fbUrl": fbUrl
+                };
 
-        console.log("[SCRAPPER][SCRAPEPROFILE] Extracted Data : "+JSON.stringify(data));
-        return data; 
+                console.log("[SCRAPPER][SCRAPEPROFILE] Extracted Data : "+JSON.stringify(data));
+                resolve(data); 
 
-    } else {
-        console.log("[SCRAPPER] Criteria not met : sales = "+saleTag);
-        setTimeout(()=>{
-            return "CriteriaNotMet";
-        }, 2000 );
-    }
+            } else {
+                console.log("[SCRAPPER] Criteria not met : sales = "+saleTag);
+                resolve( "CriteriaNotMet");
+            }
+    })
 }
 
+
+var onGetProfiles = async () => {
+
+    console.log("[SCRAPPER] Looking for profiles");
+    var profiles = false;
+    profiles = await getProfiles();
+    console.log("[SCRAPPER] Extracted Profiles # "+profiles.length);
+    for(var i = 0; i < profiles.length; i++) {
+        console.log(profiles[i]);
+    }
+
+    if(!profiles){
+        console.log("[OnGetProfiles] hmmm, found no profiles");
+    } else {
+        return { msg: "profiles", p: profiles};
+    }
+
+}
+
+var onScrapeProfile = async () => {
+    console.log("[SCRAPPER] ACTION RECIEVED : scrapeProfile");
+    var profileData = await scrapeProfile();
+    console.log("[SCRAPPER] Data Extracted "+JSON.stringify(profileData));
+    if( !profileData ) {
+        //port.postMessage( { data: "profileData", jObj: false } );
+        console.log("[SCRAPPER] hmm, scrapeProfile returned false obj :/", profileData);
+    } else if(profileData === "CriteriaNotMet"){
+        console.log("Returned, criteria not met");
+        return { data: "profileData", jObj: "CriteriaNotMet"};
+    } else {
+        console.log("Returned obj", profileData);
+        return { data: "profileData", jObj: profileData };
+        
+    }
+}
 
 /** START : Registering event listeners **/
 
 chrome.runtime.onConnect.addListener( port => {
 
-    // as a port of synchronization 
+    // as a port of avoiding multiple responses
+    // (yes, for some reasonse, we get multiple request
+    // hence multiple responses)
     // TO NOTE: this script (aka, content script)
     // is loaded everytin a new tab opens (that is
     // when the script is injected), therefore, 
@@ -268,51 +317,48 @@ chrome.runtime.onConnect.addListener( port => {
         console.log("[SCRAPPER] Got request: "+JSON.stringify(request));
         if( request.message === "getProfiles" ) {
             if(!sentProfile){
-                console.log("[SCRAPPER] Looking for profiles");
-            
-                var profiles = false;
-                profiles = getProfiles();
-                console.log("[SCRAPPER] Extracted Profiles # "+profiles.length);
-                for(var i = 0; i < profiles.length; i++) {
-                    console.log(profiles[i]);
-                }
-
-                if(!profiles){
-                    // nothing to doo ;(
-                } else {
-                    setTimeout(() => {
-                        port.postMessage( { msg: "profiles", p: profiles} );
-                        sentProfile = true;
-                    }, 5000);
-                }
+                (async () => {
+                    var profiles = await onGetProfiles();
+                    port.postMessage(profiles);
+                    sentProfile = true;
+                })();
             } else {
                 console.log("[SCRAPPER] already sent profile");
-            }
+            }    
         }
-    });
-    
 
-    // listen for Profile scrapping action
-    port.onMessage.addListener((request) =>{
+        /////////////////////////////////////////////////////////////////////
+        
         if( request.action === "scrapeProfile" ){
+            console.log("got request srape profile");
             if(!sentProfileData) {
-                console.log("[SCRAPPER] ACTION RECIEVED : scrapeProfile");
-                var profileData = scrapeProfile();
-                console.log("[SCRAPPER] Data Extracted "+JSON.stringify(profileData));
-                if( !profileData ) {
-                    //port.postMessage( { data: "profileData", jObj: false } );
-                    console.log("[SCRAPPER] hmm, scrapeProfile returned false obj :/", profileData);
-                } else if(profileData === "CriteriaNotMet"){
-                    port.postMessage( { data: "profileData", jObj: "CriteriaNotMet"} );
-                } else {
-                    port.postMessage( { data: "profileData", jObj: profileData } );
-                    sentProfileData = true;
-                }
+                (async () => {
+                    var profileData = await onScrapeProfile();
+                    // if either is true, do nothing
+                    console.log("Async got", profileData);
+                    if( !sentProfileData ) {
+                        // handle it ? how ...
+                        port.postMessage(profileData);
+                        sentProfileData = true;
+                    } else {
+                       console.log("Silly me");
+                    }
+                })();        
+                // to keep channel open ?
+                console.log("scrape profile, returned true?");
+                return true;        
             } else {
                 console.log("[SCRAPPER] Already sent profile data")
             }
         }
+
     });
+    
+
+    // listen for Profile scrapping action
+    // port.onMessage.addListener((request) =>{
+       
+    // });
 });
     
     

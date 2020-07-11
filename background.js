@@ -16,6 +16,7 @@
  *                      "email"     : email   
  *                  }
  * TODO:
+ *          - Stop injecting script on every tab reload
  *          - [BUG] There is an issue with synchronization of message, somehow, make messaging
  *            synchronus, while no response from scrapper, dont send new messages !!
  *            (in other words, wait for response, before sending messages)
@@ -102,6 +103,7 @@ chrome.tabs.onUpdated.addListener((tabid, changeInfo, tab) => {
     if( running ) {
         var url = tab.url;
         if( url.includes("profile") ) {
+// TODO: try not to inject script to every tab ;/
             injectToCurrent();
             messagePort = chrome.tabs.connect(tab.id, {name: "main-port"});
             registerMessageListener();
