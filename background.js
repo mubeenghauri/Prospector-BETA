@@ -15,11 +15,13 @@
  *                      "fbUrl"     : fbUrl,
  *                      "email"     : email   
  *                  }
- * TODO:
- *          - Stop injecting script on every tab reload
- *          - [BUG] There is an issue with synchronization of message, somehow, make messaging
+ *      - [BUG] There is an issue with synchronization of message, somehow, make messaging    [X]
  *            synchronus, while no response from scrapper, dont send new messages !!
  *            (in other words, wait for response, before sending messages)
+ *              (fixed using async/await promisies in scrapper)
+ *          
+ * TODO:
+ *          - Stop injecting script on every tab reload
  *          - for email, go through facebook (arghhh) [REAL CHALLENGE]
  *          - once object is complete, send it to python API, which will save contents to csv
  * 

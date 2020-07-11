@@ -164,8 +164,10 @@
 
 
 /**
+ * DONE :
+ *      - make all message responses asynchronus ?     [X]
  * TODO: 
- *      - make all message responses asynchronus ?
+ *      
  *      - refactor code, u know, make it like what that Youtube guy had
  * 
  */
