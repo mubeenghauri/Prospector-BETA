@@ -1,11 +1,11 @@
 /**
- * DONE:
- *      - injected script into current tabb                     [X]
- *      - background now recieves profile page from scrapper    [X]
- *      - somehow, iterate through the profile                  [X]
- *          - extract info from profile page                    [X]
- *          - send that back to background                      [X]
- *          - make background store all that in a json object   [X]
+ * DONE:                                                                       [DONE]             
+ *      - injected script into current tabb                                     [X]
+ *      - background now recieves profile page from scrapper                    [X]
+ *      - somehow, iterate through the profile                                  [X]
+ *          - extract info from profile page                                    [X]
+ *          - send that back to background                                      [X]
+ *          - make background store all that in a json object                   [X]
  *              Json Object contains :
  *                  {
  *                      "name"      : name,
@@ -15,16 +15,16 @@
  *                      "fbUrl"     : fbUrl,
  *                      "email"     : email   
  *                  }
- *      - [BUG] There is an issue with synchronization of message, somehow, make messaging    [X]
- *            synchronus, while no response from scrapper, dont send new messages !!
- *            (in other words, wait for response, before sending messages)
+ *      - [BUG] There is an issue with synchronization of message,              [X] 
+ *              somehow, make messaging synchronus, while no 
+ *              response from scrapper, dont send new messages !!
+ *              (in other words, wait for response, before sending messages)
  *              (fixed using async/await promisies in scrapper)
- *          
+    *   - for email, go through facebook (arghhh) [REAL CHALLENGE]              [X]
  * TODO:
- *          - Stop injecting script on every tab reload
- *          - for email, go through facebook (arghhh) [REAL CHALLENGE]
+ *          - iterate through pages when profiles extracted are empty
+ *          - Stop injecting script on every tab reload [maybe? get the job done the way it is rn ...]
  *          - once object is complete, send it to python API, which will save contents to csv
- * 
  *          - REFACTOR code, use 'javasctipt OOP' for scrapper and backend implementation.
  * 
  * NOTES: this version, almost working, have to add a fix around to use case => (
@@ -66,7 +66,7 @@ chrome.runtime.onMessage.addListener((req, sender, sendResponse) => {
         chrome.tabs.query({active: true}, tabs => {
             let tab = tabs[0];
             console.log("At tab "+tab.url);
-            if(tab.url.includes("zillow.com") && tab.url.includes("real-estate-agent")) {
+            if( tab.url.includes("zillow.com") && tab.url.includes("real-estate-agent") ) {
                 if(!running){
                    //injectToCurrent();
                    running = true;
@@ -81,9 +81,6 @@ chrome.runtime.onMessage.addListener((req, sender, sendResponse) => {
     }
 });
 
-
-
-
 /**
  * Whenever A tab is updated this event will be fired, 
  * This single even will handle all (3 cases in our case) cases.
@@ -93,32 +90,37 @@ chrome.runtime.onMessage.addListener((req, sender, sendResponse) => {
  * For our purposes, we are only operating within a single tab.
  */
 chrome.tabs.onUpdated.addListener((tabid, changeInfo, tab) => {
-
-    // if tabs are scwtiched, stop running !!! 
-    // can start by engaging popup !!
-    if(!tab.url.includes("zillow.com")) {
-        console.log("[BACKEND][TABS LISTENER] NOT TARGET URL!!"+tab.url);
-        running = false;
-        return;
-    }
-
     if( running ) {
-        var url = tab.url;
-        if( url.includes("profile") ) {
-// TODO: try not to inject script to every tab ;/
-            injectToCurrent();
-            messagePort = chrome.tabs.connect(tab.id, {name: "main-port"});
-            registerMessageListener();
-            // ask scrapper to scrape of required info and get it here.
-            setTimeout( ()=>{
-                messagePort.postMessage({action: "scrapeProfile"});
-           }, 10000 );
+        // if tabs are scwtiched, stop running !!! 
+        // can start by engaging popup !!
+        if((tab.url.includes("zillow.com") == false) && (tab.url.includes("facebook.com") == false)) {
+            console.log("[BACKEND][TABS LISTENER] NOT TARGET URL!!"+tab.url);
+            running = false;
+            return;
         } else {
-            console.log("[BACKEND][TABS LISTENER] found invalid link? : "+url);
+            var url = tab.url;
+            if( url.includes("profile") ) {
+                // TODO: try not to inject script to every tab ;/
+                injectToCurrent();
+                messagePort = chrome.tabs.connect(tab.id, {name: "main-port"});
+                registerMessageListener();
+                // ask scrapper to scrape of required info and get it here.
+                setTimeout( ()=>{
+                    messagePort.postMessage({action: "scrapeProfile"});
+            }, 10000 );
+            }
+            else if( tab.url.includes("facebook.com")  && tab.url.includes("about") ) {
+                messagePort = chrome.tabs.connect(tab.id, {name: "main-port"});
+                registerMessageListener();
+                console.log("[BACKEND] Connected to port [FACEBOOK]");
+                messagePort.postMessage({action: "getEmailFromFacebook"});
+            }
+            else {
+                console.log("[BACKEND][TABS LISTENER] found invalid link? : "+url);
+            }
         }
-    } else {
-        console.log("[BACKEND] not running ...");
-    }
+        
+    } 
 });
 
 /** END: Registering event Listneres **/
@@ -200,11 +202,33 @@ function registerMessageListener() {
                     tempObj = jsonObj;
                     profileData.push(JSON.stringify(jsonObj));
                     
-                    console.log("[BACKEND][TABS LISTENER][PROFILE] SETTED TEMP OBJ TO : "+JSON.stringify(tempObj));
-                    hasFacebook();
+                    console.log("[BACKEND][PROFILE][PROFILE] SETTED TEMP OBJ TO : "+JSON.stringify(tempObj));
+                    if(hasFacebook()){
+                        messagePort.postMessage({action: "getEmailFromFacebook"});
+                        console.log("[BACKED] Dispatched 'getEmailFromFacebook' to 'Scrapper'")
+                        return;
+                    }
+                    // if does not have facebook listed. 
+                    // keep going through the profiles.
                     iterateThroughProfiles();
                 }
             }
+        }
+
+        if( res.data === "email" ) {
+            var email = res.email;
+            console.log("[BACKEND][EMAIL] got email : ", email);
+            
+            if(tempObj.hasOwnProperty("email")) {
+                console.log("recieved duplicate email ", email, tempObj);
+                return;
+            }
+            tempObj['email'] = email;
+            
+            console.log("[BACKEND][PROFILE] updated temp obj : ", JSON.stringify(tempObj));
+
+            // keep on iterating through profile
+            iterateThroughProfiles();
         }
     
     });   
@@ -212,11 +236,30 @@ function registerMessageListener() {
 }
 
 function hasFacebook() {
-    if(tempObj["fbUrl"] && tempObj["fbUrl"].includes("facebook")) {
+    if( tempObj["fbUrl"] && tempObj["fbUrl"].includes("facebook") ) {
         console.log("[BACKEND] User : "+tempObj["name"]+" has a fb url =>"+tempObj["fbUrl"]);
+        var url = tempObj.fbUrl;
+        if( url[url.length-1] === "/" ){
+            url = url + "about";
+        } else {
+            url = url + "/about";
+        }
+        changeTab(url);
+        return true;
     } else {
         console.log("[BACKEND] User : "+tempObj["name"]+" does not have a fb url =>"+tempObj["fbUrl"]);
+        return false;
     }
+}
+
+function changeTab(link) {
+    console.log("[BACKEND] Changing tabs to : "+link)
+    chrome.tabs.query({active: true}, (tabs) => {
+        var tab = tabs[0];
+        setTimeout(() => {
+            chrome.tabs.update(tab.id, {url: link});
+        }, 2000);
+    });
 }
 
 function iterateThroughProfiles() { 
@@ -226,12 +269,7 @@ function iterateThroughProfiles() {
             var link = profiles.pop();
             console.log("[BACKEND]:[IterateThroughProfiles] Got link : "+link );
             if(link.includes("profile")){
-                chrome.tabs.query({active: true}, (tabs) => {
-                    var tab = tabs[0];
-                    setTimeout(() => {
-                        chrome.tabs.update(tab.id, {url: link});
-                    }, 5000);
-                });
+                changeTab(link);
             } else {
                 console.log("[BACKEND]:[IterateThroughProfiles] Something went wrong, got invalid link : "+link);
             }
