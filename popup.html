@@ -1,16 +1,42 @@
-    <!DOCTYPE html>
-    <html>
-    <head>
-    <style>
+<!DOCTYPE html>
+<html>
+<head>
+  <!-- <style>
     button {
-        height: 150px;
-        width: 150px;
-        outline: none;
-    }
-</style>
-    </head>
-    <body>
-    <button id="start">RUN</button>
-    <script src="popup.js"></script>
-    </body>
-    </html>
+      height: 150px;
+      width: 150px;
+      outline: none;
+  }
+  </style> -->
+  <link rel="stylesheet" href="assets/bootstrap-3.4.1-dist/css/bootstrap.min.css">
+</head>
+<body style="padding-bottom: 50px; border-top-width: 50px;">
+  <div class="container">
+    <div class="d-flex justify-content-center m-5 p-5 text-center">
+      <img src="assets/logo.png" alt="prospector beta">
+    </div>
+
+    <div class="container">
+      <div class="align-self-center text-center" style="
+      margin-bottom: 20px;
+      margin-top: 20px;
+  ">
+        <button id="start" class="btn btn-primary" style="height: 50px;width: 70px;padding-left: 50px;padding-right: 90px;padding-top: 6px;">
+          RUN</button>
+      </div>
+    </div>
+    <div class="container mb-5 mt-5 pt-5 p-5">
+      <div class="align-self-center text-center">
+        <button id="stop" class="btn btn-danger" style="
+        padding-right: 50px;
+        padding-left: 50px;
+        padding-top: 10px;
+        padding-bottom: 10px;
+    ">STOP</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
