@@ -1,8 +1,11 @@
 /**
+ * @author : mubeenghauri
+ * @version : 0.9-BETA
  * DONE :
  *      - make all message responses asynchronus ?     [X]
  *      - extract email out of fb                      [X]
  * TODO: 
+ *      - extract website, linkedin 
  *      - refactor code, u know, make it like what that Youtube guy had
  * 
  */
