@@ -80,12 +80,30 @@ var scrapeProfile = () => {
                 
                 scrollEffect();
 
+                var linkedinUrl = document.getElementsByClassName("linkedIn").length > 0 ? document.getElementsByClassName("linkedIn")[0].parentElement.getAttribute("href") : "not found";
+                console.log("[SCRAPPER][SCRAPEPROFILE] Found fb : "+linkedinUrl);
+
+                scrollEffect();
+                var website = "not available";
+                
+                var a = document.getElementsByTagName("a");
+                for (let i = 0; i < a.length; i++) {
+                    try {
+                        if(a[i].innerText === "Website") {
+                            website = a[i].getAttribute("href");
+                        }
+                    } catch (error) {}
+                }
+               
+                console.log("[SCRAPPER][SCRAPEPROFILE] found website : "+website );
                 var data = {
                     "name": name,
                     "url": url,
                     "isPremium": isPremium,
                     "zipCode": zipCode,
-                    "fbUrl": fbUrl
+                    "fbUrl": fbUrl,
+                    "linkedIn": linkedinUrl,
+                    "website": website
                 };
 
                 console.log("[SCRAPPER][SCRAPEPROFILE] Extracted Data : "+JSON.stringify(data));
@@ -210,11 +228,11 @@ chrome.runtime.onConnect.addListener( port => {
                         port.postMessage(profileData);
                         sentProfileData = true;
                     } else {
-                       console.log("Silly me");
+                       console.log("Silly me :(");
                     }
                 })();        
                 // to keep channel open ?
-                console.log("scrape profile, returned true?");
+                console.log("scrape profile, returned true? ;-/");
                 return true;        
             } else {
                 console.log("[SCRAPPER] Already sent profile data")

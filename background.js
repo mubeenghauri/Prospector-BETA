@@ -16,7 +16,9 @@
  *                      "isPremium" : isPremium,
  *                      "zipCode"   : zipCode,
  *                      "fbUrl"     : fbUrl,
- *                      "email"     : email   
+ *                      "email"     : email,
+ *                      "website"   : website.com.,
+ *                      "linkedIn"  : linkedin.com
  *                  }
  *      - [BUG] There is an issue with synchronization of message,              [X] 
  *              somehow, make messaging synchronus, while no 
@@ -26,15 +28,16 @@
  *      - for email, go through facebook (arghhh) [REAL CHALLENGE]              [X]
  *      - Stop injecting script on every tab reload                             [X]
  *          [maybe? get the job done the way it is rn ...]
+ *      - iterate through pages when profiles extracted are empty
+ *      - once object is complete, send it to python API,                       [X]
+ *        which will save contents to csv
  * 
  * TODO:
- *          - iterate through pages when profiles extracted are empty
- *          - once object is complete, send it to python API, which will save contents to csv
+ *          - Incorporate new values into jsonObj (additional val => website & linkedin, if available)
  *          - REFACTOR code, use 'javasctipt OOP' for scrapper and backend implementation.
  * 
  * NOTES: this version, almost working, have to add a fix around to use case => (
- *      what if the sales number does not meet our match , skip profile???
- * )
+ *      what if the sales number does not meet our match , skip profile???) [YES, PROFILE IS SKIPPED] [SOLVED]
  */
 
 /** Globals */
@@ -72,9 +75,9 @@ chrome.runtime.onMessage.addListener((req, sender, sendResponse) => {
         console.log("I recieved button click confimation!");
         
         // reset variables
-        // profiles = [];
-        // tempObj = "";
-        // profilesData = [];
+        profiles = [];
+        tempObj = "";
+        profilesData = [];
         pageNum = 1;
 
         // check if we are on zillow and on real estate agent page
@@ -82,10 +85,7 @@ chrome.runtime.onMessage.addListener((req, sender, sendResponse) => {
             let tab = tabs[0];
             console.log("At tab "+tab.url);
             if( tab.url.includes("zillow.com") && tab.url.includes("real-estate-agent") ) {
-                if(!running){
-                   //injectToCurrent();
-                   running = true;
-                }
+                if(!running) { running = true; }
                 zipCode = req.zipCode;
                 console.log("[Backend] got zipcode : "+zipCode);
                 (async () => {
@@ -126,12 +126,12 @@ chrome.tabs.onUpdated.addListener((tabid, changeInfo, tab) => {
         if((tab.url.includes("zillow.com") == false) && (tab.url.includes("facebook.com") == false)) {
             console.log("[BACKEND][TABS LISTENER] NOT TARGET URL!!"+tab.url);
             running = false;
-            return;
+            return; 
         } else {
             var url = tab.url;
             if( url.includes("profile") ) {
                 // TODO: try not to inject script to every tab ;/
-                //injectToCurrent();
+                //injectToCurrent();    [NOTES: WORKS WITHOUT IT TOO, REMOVE IT MAYBE?]
                 messagePort = chrome.tabs.connect(tab.id, {name: "main-port"});
                 registerMessageListener();
                 // ask scrapper to scrape of required info and get it here.
@@ -236,18 +236,13 @@ function registerMessageListener() {
                 });
                 if(hasAll) {
                     tempObj = jsonObj;
-                    profileData.push(JSON.stringify(jsonObj));
-                    
+                    profileData.push(JSON.stringify(jsonObj));  
                     console.log("[BACKEND][PROFILE][PROFILE] SETTED TEMP OBJ TO : "+JSON.stringify(tempObj));
-                   
-                    //tounblock later
-
-                    // if(hasFacebook()){
-                    //     messagePort.postMessage({action: "getEmailFromFacebook"});
-                    //     console.log("[BACKED] Dispatched 'getEmailFromFacebook' to 'Scrapper'")
-                    //     return;
-                    // }
-        
+                    if(hasFacebook()){
+                        messagePort.postMessage({action: "getEmailFromFacebook"});
+                        console.log("[BACKED] Dispatched 'getEmailFromFacebook' to 'Scrapper'");
+                        return;
+                    }
                     // if does not have facebook listed. 
                     // set email to "null"; and send data to server
                     tempObj["email"] = "noFb=noEmail";
