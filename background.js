@@ -1,6 +1,6 @@
 /**
  * @author : mubeenghauri
- * @version : 0.9-BETA
+ * @version : 0.9.5-BETA
  * 
  * DONE:                                                                       [DONE]             
  *      - injected script into current tabb                                     [X]
@@ -31,11 +31,13 @@
  *      - iterate through pages when profiles extracted are empty
  *      - once object is complete, send it to python API,                       [X]
  *        which will save contents to csv
- * 
+ *      - Incorporate new values into jsonObj                                   [X] 
+ *          (additional val => website & linkedin, if available) 
  * TODO:
- *          - Incorporate new values into jsonObj (additional val => website & linkedin, if available)
+ *          - accept zipcode in bulk and iterate through them....
+ *          - re-format facebook url to redirect directly to about page
  *          - REFACTOR code, use 'javasctipt OOP' for scrapper and backend implementation.
- * 
+ *        
  * NOTES: this version, almost working, have to add a fix around to use case => (
  *      what if the sales number does not meet our match , skip profile???) [YES, PROFILE IS SKIPPED] [SOLVED]
  */
@@ -340,6 +342,11 @@ function iterateThroughProfiles() {
     } else {
         console.log("[BACKEND]:[IterateThroughProfiles] Profiles is empty.");
         (async () => {
+            // resetint these vars to avoid memory 
+            // bottleneck
+            profiles = [];
+            tempObj = "";
+            profilesData = [];
             await goToSearchPage();
         })();
     }
