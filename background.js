@@ -33,9 +33,15 @@
  *        which will save contents to csv
  *      - Incorporate new values into jsonObj                                   [X] 
  *          (additional val => website & linkedin, if available) 
+ *      - re-format facebook url to redirect directly to about page             [X]
  * TODO:
+ *          - [BUMP MAJOR] add google sheets integration
+ *          - [BUMP MINOR] Introduce a backup mechanism such that it
+ *            keeps track of current page(number) and zipcode, and 
+ *            collection of profiles remaining in that page. So that
+ *            if unexpectedly closed, previous state is resumed
+ *          - [POPUP] make popup persistent ?
  *          - accept zipcode in bulk and iterate through them....
- *          - re-format facebook url to redirect directly to about page
  *          - REFACTOR code, use 'javasctipt OOP' for scrapper and backend implementation.
  *        
  * NOTES: this version, almost working, have to add a fix around to use case => (
@@ -50,7 +56,6 @@ var tempObj = "";               /* temporarily store data collected for a single
 var messagePort = null;         /* message port for comunicating with conent script (scrapper.js) */
 var recievedObj = false;        /* Flag to indicate if content script has sent data, to avoid duplication */
 var profileData = [];           /* List of all data scrapped */
-var changePage = false;
 var zipCode = ""                /* Currently processing zipcode */
 var pageNum = 1;                /* page number currently at */
 var server = "http://localhost:5000/scrapped";
@@ -73,9 +78,9 @@ var server = "http://localhost:5000/scrapped";
  * Entry Point of Extention. 
  */
 chrome.runtime.onMessage.addListener((req, sender, sendResponse) => {
-    if( req.clicked === true) {
+    if (req.clicked === true) {
         console.log("I recieved button click confimation!");
-        
+
         // reset variables
         profiles = [];
         tempObj = "";
@@ -83,29 +88,29 @@ chrome.runtime.onMessage.addListener((req, sender, sendResponse) => {
         pageNum = 1;
 
         // check if we are on zillow and on real estate agent page
-        chrome.tabs.query({active: true}, tabs => {
+        chrome.tabs.query({ active: true }, tabs => {
             let tab = tabs[0];
-            console.log("At tab "+tab.url);
-            if( tab.url.includes("zillow.com") && tab.url.includes("real-estate-agent") ) {
-                if(!running) { running = true; }
+            console.log("At tab " + tab.url);
+            if (tab.url.includes("zillow.com") && tab.url.includes("real-estate-agent")) {
+                if (!running) { running = true; }
                 zipCode = req.zipCode;
-                console.log("[Backend] got zipcode : "+zipCode);
+                console.log("[Backend] got zipcode : " + zipCode);
                 (async () => {
                     goToSearchPage();
-                    messagePort = chrome.tabs.connect(tab.id, {name: "main-port"});
+                    messagePort = chrome.tabs.connect(tab.id, { name: "main-port" });
                     registerMessageListener();
                     console.log("[BACKEND] Connected to port");
-            
-                    messagePort.postMessage({message: "getProfiles"});
+
+                    messagePort.postMessage({ message: "getProfiles" });
                 })();
-                
+
             } else {
-                console.log("tab should be zillow search page "+tab.url);
+                console.log("tab should be zillow search page " + tab.url);
             }
         });
     }
 
-    if(req.stop === true) {
+    if (req.stop === true) {
         messagePort.disconnect();
         messagePort.onDisconnect.removeListener(event);
     }
@@ -122,43 +127,43 @@ chrome.runtime.onMessage.addListener((req, sender, sendResponse) => {
  * Also, upon clicking STOP button on popup, this will disconnect port
  */
 chrome.tabs.onUpdated.addListener((tabid, changeInfo, tab) => {
-    if( running ) {
+    if (running) {
         // if tabs are scwtiched, stop running !!! 
         // can start by engaging popup !!
-        if((tab.url.includes("zillow.com") == false) && (tab.url.includes("facebook.com") == false)) {
-            console.log("[BACKEND][TABS LISTENER] NOT TARGET URL!!"+tab.url);
+        if ((tab.url.includes("zillow.com") == false) && (tab.url.includes("facebook.com") == false)) {
+            console.log("[BACKEND][TABS LISTENER] NOT TARGET URL!!" + tab.url);
             running = false;
-            return; 
+            return;
         } else {
             var url = tab.url;
-            if( url.includes("profile") ) {
+            if (url.includes("profile")) {
                 // TODO: try not to inject script to every tab ;/
                 //injectToCurrent();    [NOTES: WORKS WITHOUT IT TOO, REMOVE IT MAYBE?]
-                messagePort = chrome.tabs.connect(tab.id, {name: "main-port"});
+                messagePort = chrome.tabs.connect(tab.id, { name: "main-port" });
                 registerMessageListener();
                 // ask scrapper to scrape of required info and get it here.
-                setTimeout( ()=>{
-                    messagePort.postMessage({action: "scrapeProfile"});
-            }, 10000 );
+                setTimeout(() => {
+                    messagePort.postMessage({ action: "scrapeProfile" });
+                }, 10000);
             }
-            else if( tab.url.includes("facebook.com")  && tab.url.includes("about") ) {
-                messagePort = chrome.tabs.connect(tab.id, {name: "main-port"});
+            else if (tab.url.includes("facebook.com") && tab.url.includes("about")) {
+                messagePort = chrome.tabs.connect(tab.id, { name: "main-port" });
                 registerMessageListener();
                 console.log("[BACKEND] Connected to port [FACEBOOK]");
-                messagePort.postMessage({action: "getEmailFromFacebook"});
+                messagePort.postMessage({ action: "getEmailFromFacebook" });
             }
-            else if( tab.url.includes("zillow.com") && tab.url.includes("real-estate-agent") ) {
-                messagePort = chrome.tabs.connect(tab.id, {name: "main-port"});
+            else if (tab.url.includes("zillow.com") && tab.url.includes("real-estate-agent")) {
+                messagePort = chrome.tabs.connect(tab.id, { name: "main-port" });
                 registerMessageListener();
-                messagePort.postMessage({message: "getProfiles"});
-                console.log("[BACKEND] [TAB Listener] Getting Profiles");                
+                messagePort.postMessage({ message: "getProfiles" });
+                console.log("[BACKEND] [TAB Listener] Getting Profiles");
             }
             else {
-                console.log("[BACKEND][TABS LISTENER] found invalid link? : "+url);
+                console.log("[BACKEND][TABS LISTENER] found invalid link? : " + url);
             }
         }
-        
-    } 
+
+    }
 });
 
 /** END: Registering event Listneres **/
@@ -167,81 +172,81 @@ chrome.tabs.onUpdated.addListener((tabid, changeInfo, tab) => {
 
 function registerMessageListener() {
 
-    messagePort.onDisconnect.addListener( smtng => {
+    messagePort.onDisconnect.addListener(smtng => {
         console.log("Port disconnected");
-        if(running){
-            chrome.tabs.query({active: true}, tabs => {
+        if (running) {
+            chrome.tabs.query({ active: true }, tabs => {
                 let tab = tabs[0];
                 //console.log("At tab "+tab.url);
-                if(tab.url.includes("zillow.com") && (tab.url.includes("real-estate-agent") || tab.url.includes("profile"))) {
-                    if(!running){
+                if (tab.url.includes("zillow.com") && (tab.url.includes("real-estate-agent") || tab.url.includes("profile"))) {
+                    if (!running) {
                         injectToCurrent();
-                    }  
-                    messagePort = chrome.tabs.connect(tab.id, {name: "main-port"});
+                    }
+                    messagePort = chrome.tabs.connect(tab.id, { name: "main-port" });
                     registerMessageListener();
-                    if(messagePort) { 
+                    if (messagePort) {
                         //console.log("[BACKEND] Reconnected to port");
                     }
                 }
             });
         } else {
-            console.log("Not Running anymore, found profiles : ",profileData);
+            console.log("Not Running anymore, found profiles : ", profileData);
         }
     });
 
-    messagePort.onMessage.addListener( res => {
-        console.log("[BACKEND][MESSAGEPORT] recieved message !!",res);
-        if( res.msg === "profiles" ) {
-            console.log("[BACKEND] Recieved profiles collection : " + res.p );
-            for(var i = 0; i < res.p.length; i++) {
+    messagePort.onMessage.addListener(res => {
+        console.log("[BACKEND][MESSAGEPORT] recieved message !!", res);
+        if (res.msg === "profiles") {
+            console.log("[BACKEND] Recieved profiles collection : " + res.p);
+            for (var i = 0; i < res.p.length; i++) {
                 console.log(res.p[i]);
             }
-            if( res.p.length <= 0 ) {
-                console.log("[BACKEND] something wrong, length of profile collection is : "+res.p.length);
+            if (res.p.length <= 0) {
+                console.log("[BACKEND] something wrong, length of profile collection is : " + res.p.length);
                 return;
-            }  else {
+            } else {
                 profiles = res.p;
                 // wait for 5 secs,  invoke profile iterator.
                 setTimeout(iterateThroughProfiles, 5000);
             }
         }
-    
-        if( res.data === "profileData" ) {
+
+        if (res.data === "profileData") {
             // res will return a json object (see above for structore of obj)
             // verify obj has all properties requires, except for email,
             // that will be the next step ;)
             var jsonObj = res.jObj;
-            console.log("[BACKEND][PROFILE] GOT JSON RESPONSE : "+jsonObj);
+            console.log("[BACKEND][PROFILE] GOT JSON RESPONSE : " + jsonObj);
             var properties = ["name", "isPremium", "url", "zipCode", "fbUrl"];
             var hasAll = true;
-            if(!jsonObj) {
+            if (!jsonObj) {
                 // if no obj recieved, keep going through profiles;
                 console.log("[BACKEND][PROFILE] recieved null object");
                 //iterateThroughProfiles();
                 return;
-            } else if(typeof jsonObj === "string" && jsonObj === "CriteriaNotMet"){
+            } else if (typeof jsonObj === "string" && jsonObj === "CriteriaNotMet") {
                 iterateThroughProfiles();
                 return;
 
             } else {
-                if(profileData.includes(JSON.stringify(jsonObj))) {
+                if (profileData.includes(JSON.stringify(jsonObj))) {
                     // if our tempObj has been assigned, and we get jsonObj 
                     // with same values, skip below code
-                    console.log("[BACKEND][PROFILE] recieved dupplicate : "+jsonObj.name);
+                    console.log("[BACKEND][PROFILE] recieved dupplicate : " + jsonObj.name);
                     iterateThroughProfiles();
                     return;
                 }
                 properties.forEach((val, index, arr) => {
-                    if( ! jsonObj.hasOwnProperty(val) ) {
+                    if (!jsonObj.hasOwnProperty(val)) {
                         hasAll = false;
                     }
                 });
-                if(hasAll) {
+                if (hasAll) {
                     tempObj = jsonObj;
-                    profileData.push(JSON.stringify(jsonObj));  
-                    console.log("[BACKEND][PROFILE][PROFILE] SETTED TEMP OBJ TO : "+JSON.stringify(tempObj));
-                    if(hasFacebook()){
-                        messagePort.postMessage({action: "getEmailFromFacebook"});
+                    profileData.push(JSON.stringify(jsonObj));
+                    console.log("[BACKEND][PROFILE][PROFILE] SETTED TEMP OBJ TO : " + JSON.stringify(tempObj));
+                    if (hasFacebook()) {
+                        messagePort.postMessage({ action: "getEmailFromFacebook" });
                         console.log("[BACKED] Dispatched 'getEmailFromFacebook' to 'Scrapper'");
                         return;
                     }
@@ -255,43 +260,43 @@ function registerMessageListener() {
             }
         }
 
-        if( res.data === "email" ) {
+        if (res.data === "email") {
             var email = res.email;
             console.log("[BACKEND][EMAIL] got email : ", email);
-            
-            if(tempObj.hasOwnProperty("email")) {
+
+            if (tempObj.hasOwnProperty("email")) {
                 console.log("recieved duplicate email ", email, tempObj);
                 return;
             }
             tempObj['email'] = email;
-            
+
             console.log("[BACKEND][PROFILE] updated temp obj : ", JSON.stringify(tempObj));
-            
+
             sendData();
 
             // keep on iterating through profile
             iterateThroughProfiles();
         }
 
-        if( res.data === "pageChanged" ) {
-            console.log("[BACKEND] Recieved : ",res);
-            if(res.status === "success") {
+        if (res.data === "pageChanged") {
+            console.log("[BACKEND] Recieved : ", res);
+            if (res.status === "success") {
                 console.log("Succecfully changed page.... going through profiles");
-                messagePort.postMessage({message: "getProfiles"});
+                messagePort.postMessage({ message: "getProfiles" });
             }
         }
-    
-    });   
+
+    });
 
 }
 
 function requestSender(data) {
-    return new Promise( resolve => {
+    return new Promise(resolve => {
         var xml = new XMLHttpRequest();
         xml.open("POST", server, true);
         xml.setRequestHeader("Content-Type", "application/json");
         xml.send(data);
-        console.log("[REQUEST SENDER] sent data :",data);
+        console.log("[REQUEST SENDER] sent data :", data);
     })
 }
 
@@ -302,48 +307,81 @@ async function sendData() {
     return;
 }
 
-function hasFacebook() {
-    if( tempObj["fbUrl"] && tempObj["fbUrl"].includes("facebook") ) {
-        console.log("[BACKEND] User : "+tempObj["name"]+" has a fb url =>"+tempObj["fbUrl"]);
-        var url = tempObj.fbUrl;
-        if( url[url.length-1] === "/" ){
-            url = url + "about";
-        } else {
-            url = url + "/about";
+function validateFacebookUrl(url) {
+    console.log("[VALIDATE FACEBOOK URL] got url : " + url);
+    var a = url.split("?");
+    console.log(url.split("?"));
+    if (url.includes("profile")) {
+        a = a.slice(0, 2);
+        console.log(a);
+        a = a.join("?");
+    } else {
+        a = a[0];
+    }
+    console.log("[VALIDATE FACEBOOK URL] after removing '?' : " + a);
+    var b = a.split("/");
+    console.log(b);
+    if (b[3] === "pages" || b[3] === "pg") {
+        console.log("in if");
+        var l = b.length;
+        while (l != 5) {
+            delete b[l - 1];
+            l--;
         }
+    } else {
+        console.log("in else");
+        var l = b.length;
+        while (l != 4) {
+            delete b[l - 1];
+            l--;
+        }
+    }
+    b = b.join("/");
+    if (b[b.length - 1] === "/") {
+        return b + "about";
+    } else {
+        return b + "/about";
+    }
+}
+
+function hasFacebook() {
+    if (tempObj["fbUrl"] && tempObj["fbUrl"].includes("facebook")) {
+        console.log("[BACKEND] User : " + tempObj["name"] + " has a fb url =>" + tempObj["fbUrl"]);
+        var url = validateFacebookUrl(tempObj["fbUrl"]);
+        console.log("[BACKEND][HasFacebook] got validated url : " + url);
         changeTab(url);
         return true;
     } else {
-        console.log("[BACKEND] User : "+tempObj["name"]+" does not have a fb url =>"+tempObj["fbUrl"]);
+        console.log("[BACKEND] User : " + tempObj["name"] + " does not have a fb url =>" + tempObj["fbUrl"]);
         return false;
     }
 }
 
 function changeTab(link) {
-    console.log("[BACKEND] Changing tabs to : "+link)
-    chrome.tabs.query({active: true}, (tabs) => {
+    console.log("[BACKEND] Changing tabs to : " + link)
+    chrome.tabs.query({ active: true }, (tabs) => {
         var tab = tabs[0];
         setTimeout(() => {
-            chrome.tabs.update(tab.id, {url: link});
+            chrome.tabs.update(tab.id, { url: link });
         }, 2000);
     });
 }
 
-function iterateThroughProfiles() { 
-    if( profiles.length > 0 ) {
+function iterateThroughProfiles() {
+    if (profiles.length > 0) {
         console.log("[BACKEND]:[IterateThroughProfiles] Iterating through profiles ... ");
         var link = profiles.pop();
-        console.log("[BACKEND]:[IterateThroughProfiles] Got link : "+link );
-        if(link.includes("profile")){
+        console.log("[BACKEND]:[IterateThroughProfiles] Got link : " + link);
+        if (link.includes("profile")) {
             changeTab(link);
         } else {
-            console.log("[BACKEND]:[IterateThroughProfiles] Something went wrong, got invalid link : "+link);
+            console.log("[BACKEND]:[IterateThroughProfiles] Something went wrong, got invalid link : " + link);
         }
     } else {
         console.log("[BACKEND]:[IterateThroughProfiles] Profiles is empty.");
         (async () => {
             // resetint these vars to avoid memory 
-            // bottleneck
+            // bottleneck 
             profiles = [];
             tempObj = "";
             profilesData = [];
@@ -352,35 +390,40 @@ function iterateThroughProfiles() {
     }
 }
 
+function notifyPopUp() {
+    var payload = "For Zipcode : " + zipCode + " at page : " + pageNum;
+    chrome.runtime.sendMessage({ msg: "info", info: payload });
+}
+
 function goToSearchPage() {
-    return new Promise( resolves => {
-        var searchPage = "https://www.zillow.com/agent-finder/real-estate-agent-reviews/?locationText="+zipCode+"&page="+pageNum;
-        console.log("[GOTONEXTPAGE] Going to search page "+searchPage);
+    return new Promise(resolves => {
+        var searchPage = "https://www.zillow.com/agent-finder/real-estate-agent-reviews/?locationText=" + zipCode + "&page=" + pageNum;
+        console.log("[GOTONEXTPAGE] Going to search page " + searchPage);
         changeTab(searchPage);
-        changePage = true;
         pageNum++;
-        setTimeout(()=>{
+        notifyPopUp();
+        setTimeout(() => {
             resolves(true);
         }, 3000);
     })
 }
 
 function getCurrentUrl() {
-    chrome.tabs.query({active: true}, (tabs) => {
-        console.log("getting current url : "+tabs[0].url);
+    chrome.tabs.query({ active: true }, (tabs) => {
+        console.log("getting current url : " + tabs[0].url);
         return tabs[0].url;
     });
 }
 
 function injectToCurrent() {
-    chrome.tabs.query({active: true, currentWindow: true}, ([ tab, ]) => tab && injectToTab(tab.id));
+    chrome.tabs.query({ active: true, currentWindow: true }, ([tab,]) => tab && injectToTab(tab.id));
 }
 
 function injectToTab(tabId) {
     // source : https://discourse.mozilla.org/t/event-listeners-added-multiple-times/9971/4
-    if (Array.from(ports).some(_=>_.sender.tab.id === tabId)) { return; } // already injected
+    if (Array.from(ports).some(_ => _.sender.tab.id === tabId)) { return; } // already injected
     console.log("Injecting script to tab ... ");
-    chrome.tabs.executeScript(tabId, { file: "./scrapper.js"}, () => {
+    chrome.tabs.executeScript(tabId, { file: "./scrapper.js" }, () => {
         console.log("script injected");
         running = true;
     });

@@ -4,8 +4,10 @@
  * DONE :
  *      - make all message responses asynchronus ?     [X]
  *      - extract email out of fb                      [X]
+ *      - extract website, linkedin                    [X]
+ *      - while on favebook, if title of document is   [X]
+ *        "Page Not Found", skip scrapping fb
  * TODO: 
- *      - extract website, linkedin 
  *      - refactor code, u know, make it like what that Youtube guy had
  * 
  */
@@ -42,8 +44,6 @@ var getProfiles = () => {
         resolve(profileArray);
     })
 }
-
-
 
 var scrapeProfile = () => {
     console.log("[SCRAPPER][SCRAPEPROFILE] Initiated ...");
@@ -122,6 +122,12 @@ var onGetEmail = async () => {
 
     return new Promise( resolve => {
         setTimeout(()=>{
+
+            if(window.document.title == "Page Not Found") {
+                resolve( {data: "email", email: "invalid-facebook-id"} );
+                return;
+            }
+
             var a = document.getElementsByTagName("a");
             var anchorOfInterest = null;
             for(var i = 0; i < a.length; i++) {
