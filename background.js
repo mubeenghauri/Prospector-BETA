@@ -34,6 +34,8 @@
  *      - Incorporate new values into jsonObj                                   [X] 
  *          (additional val => website & linkedin, if available) 
  *      - re-format facebook url to redirect directly to about page             [X]
+ *      - use zillow api to resolve search page url.                            [X]
+ * 
  * TODO:
  *          - [BUMP MAJOR] add google sheets integration
  *          - [BUMP MINOR] Introduce a backup mechanism such that it
@@ -58,6 +60,8 @@ var recievedObj = false;        /* Flag to indicate if content script has sent d
 var profileData = [];           /* List of all data scrapped */
 var zipCode = ""                /* Currently processing zipcode */
 var pageNum = 1;                /* page number currently at */
+var searchUrl = "";
+var profileRecieved = false;
 var server = "http://localhost:5000/scrapped";
 
 /** Start: Registering event listeners **/
@@ -95,8 +99,12 @@ chrome.runtime.onMessage.addListener((req, sender, sendResponse) => {
                 if (!running) { running = true; }
                 zipCode = req.zipCode;
                 console.log("[Backend] got zipcode : " + zipCode);
+                pageNum = req.page;
+                console.log("[Backend] got page number : " + pageNum);
+
                 (async () => {
-                    goToSearchPage();
+                    await resolveSearchUrl();
+                    await goToSearchPage();
                     messagePort = chrome.tabs.connect(tab.id, { name: "main-port" });
                     registerMessageListener();
                     console.log("[BACKEND] Connected to port");
@@ -111,6 +119,7 @@ chrome.runtime.onMessage.addListener((req, sender, sendResponse) => {
     }
 
     if (req.stop === true) {
+        running = false;
         messagePort.disconnect();
         messagePort.onDisconnect.removeListener(event);
     }
@@ -155,6 +164,7 @@ chrome.tabs.onUpdated.addListener((tabid, changeInfo, tab) => {
             else if (tab.url.includes("zillow.com") && tab.url.includes("real-estate-agent")) {
                 messagePort = chrome.tabs.connect(tab.id, { name: "main-port" });
                 registerMessageListener();
+                profileRecieved = false;
                 messagePort.postMessage({ message: "getProfiles" });
                 console.log("[BACKEND] [TAB Listener] Getting Profiles");
             }
@@ -180,7 +190,7 @@ function registerMessageListener() {
                 //console.log("At tab "+tab.url);
                 if (tab.url.includes("zillow.com") && (tab.url.includes("real-estate-agent") || tab.url.includes("profile"))) {
                     if (!running) {
-                        injectToCurrent();
+                        // injectToCurrent();
                     }
                     messagePort = chrome.tabs.connect(tab.id, { name: "main-port" });
                     registerMessageListener();
@@ -197,18 +207,23 @@ function registerMessageListener() {
     messagePort.onMessage.addListener(res => {
         console.log("[BACKEND][MESSAGEPORT] recieved message !!", res);
         if (res.msg === "profiles") {
-            console.log("[BACKEND] Recieved profiles collection : " + res.p);
-            for (var i = 0; i < res.p.length; i++) {
-                console.log(res.p[i]);
-            }
-            if (res.p.length <= 0) {
-                console.log("[BACKEND] something wrong, length of profile collection is : " + res.p.length);
-                return;
-            } else {
-                profiles = res.p;
-                // wait for 5 secs,  invoke profile iterator.
-                setTimeout(iterateThroughProfiles, 5000);
-            }
+            if(!profileRecieved) {
+                console.log("[BACKEND] Recieved profiles collection : " + res.p);
+                for (var i = 0; i < res.p.length; i++) {
+                    console.log(res.p[i]);
+                }
+                if (res.p.length <= 0) {
+                    console.log("[BACKEND] something wrong, length of profile collection is : " + res.p.length);
+                    return;
+                } else {
+                    profiles = res.p;
+                    // wait for 5 secs,  invoke profile iterator.
+                    setTimeout(iterateThroughProfiles, 5000);
+                    profileRecieved = true;
+                }
+           } else {
+               console.log("recieved duplicate profiles");
+           }
         }
 
         if (res.data === "profileData") {
@@ -233,6 +248,7 @@ function registerMessageListener() {
                     // if our tempObj has been assigned, and we get jsonObj 
                     // with same values, skip below code
                     console.log("[BACKEND][PROFILE] recieved dupplicate : " + jsonObj.name);
+                    console.log("ProfileData = ", profilesData);
                     iterateThroughProfiles();
                     return;
                 }
@@ -287,7 +303,33 @@ function registerMessageListener() {
         }
 
     });
+}
 
+function resolveSearchUrl() {
+    // uses zillow's own mechanism for building search url;
+    return new Promise( resolve => {
+        var api = 'https://www.zillow.com/user/directory/LeaderboardsURLGenerator.htm?searchTerm='+zipCode+'&languageMask=&specialty=&proType=RealEstateAgent&callback=';
+        fetch(api)
+            .then(async res => {
+                if( res.status !== 200) {
+                    console.log("[ResolveSearchUrl] Something is wrong, status : "+res.status);
+                    return;
+                }
+                var data = await res.json();
+                console.log("[ResolveSearchUrl] Got Data : ",data);
+                
+                // if(data.url[data.url.length-1] === "/") {
+                //     var url = "https://www.zillow.com"+data.url.slice(0, data.url.length-1);
+                // } else {
+                    var url = "https://www.zillow.com"+data.url;
+                // }
+
+                console.log("[ResolveSearchPage] Constructed url : "+url);
+
+                searchUrl = url;
+                resolve(true);
+            });
+    })
 }
 
 function requestSender(data) {
@@ -304,6 +346,7 @@ async function sendData() {
     console.log("[SEND DATA] sending data to server ... ");
     var data = JSON.stringify(tempObj);
     await requestSender(data);
+    // appendData(tempObj);
     return;
 }
 
@@ -337,17 +380,20 @@ function validateFacebookUrl(url) {
         }
     }
     b = b.join("/");
+    var c = "";
     if (b[b.length - 1] === "/") {
-        return b + "about";
+        c =  b + "about";
     } else {
-        return b + "/about";
+        c = b + "/about";
     }
+    return c.includes("facebook.com/about") ? "" : c; 
 }
 
 function hasFacebook() {
     if (tempObj["fbUrl"] && tempObj["fbUrl"].includes("facebook")) {
         console.log("[BACKEND] User : " + tempObj["name"] + " has a fb url =>" + tempObj["fbUrl"]);
         var url = validateFacebookUrl(tempObj["fbUrl"]);
+        if(url === "") return false;
         console.log("[BACKEND][HasFacebook] got validated url : " + url);
         changeTab(url);
         return true;
@@ -377,14 +423,15 @@ function iterateThroughProfiles() {
         } else {
             console.log("[BACKEND]:[IterateThroughProfiles] Something went wrong, got invalid link : " + link);
         }
+        saveState();
     } else {
         console.log("[BACKEND]:[IterateThroughProfiles] Profiles is empty.");
         (async () => {
             // resetint these vars to avoid memory 
             // bottleneck 
-            profiles = [];
-            tempObj = "";
-            profilesData = [];
+            // profiles = [];
+            // tempObj = "";
+            // profilesData = [];
             await goToSearchPage();
         })();
     }
@@ -396,8 +443,19 @@ function notifyPopUp() {
 }
 
 function goToSearchPage() {
+    console.log("go to search page called")
+    // reset values 
+    profiles = [];
+    profilesData = [];
+    tempObj = "";
     return new Promise(resolves => {
-        var searchPage = "https://www.zillow.com/agent-finder/real-estate-agent-reviews/?locationText=" + zipCode + "&page=" + pageNum;
+        if(pageNum > 25) {
+            chrome.storage.local.clear(()=>{
+                console.log("[BACKEND] END OF SEARCH PAGE, Storage cleared");
+            })
+            return;
+        }
+        var searchPage = searchUrl + "?page=" + pageNum;
         console.log("[GOTONEXTPAGE] Going to search page " + searchPage);
         changeTab(searchPage);
         pageNum++;
@@ -405,6 +463,13 @@ function goToSearchPage() {
         setTimeout(() => {
             resolves(true);
         }, 3000);
+    })
+}
+
+function saveState() {
+    // saves current pagenumber and zipcode 
+    chrome.storage.local.set({page: pageNum, zip: zipCode, profiles: profiles}, ()=>{
+        console.log("[STORAGE] Saved Current state");
     })
 }
 
@@ -428,6 +493,7 @@ function injectToTab(tabId) {
         running = true;
     });
 }
+
 
 /** END: Defining functions **/
 
