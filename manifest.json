@@ -5,7 +5,7 @@
     "manifest_version": 2,
     "background": {
         "persistent": false,
-        "scripts": ["background.js"]
+        "page": "background.html"
     },
     "content_scripts": [
         {
@@ -34,6 +34,7 @@
         "activeTab",
         "http://localhost/*",
         "https://zillow.com/*",
-        "https://facebook.com/*"
+        "https://facebook.com/*",
+        "storage"
     ]
 }
