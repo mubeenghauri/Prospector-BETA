@@ -120,33 +120,35 @@ var onGetEmail = async () => {
 
     console.log("[SCRAPPER] GETTING EMAILS");
 
-    return new Promise( resolve => {
-        setTimeout(()=>{
-
-            if(window.document.title == "Page Not Found") {
-                resolve( {data: "email", email: "invalid-facebook-id"} );
-                return;
-            }
-
-            var a = document.getElementsByTagName("a");
-            var anchorOfInterest = null;
-            for(var i = 0; i < a.length; i++) {
-                try{
-                    if(a[i].getAttribute("href").includes("@")){
-                    console.log(a[i].getAttribute("href"));
-                    anchorOfInterest = a[i]; 
+    if(window.document.readyState === "complete") {
+        return new Promise( resolve => {
+            setTimeout(()=>{
+    
+                if(window.document.title == "Page Not Found") {
+                    resolve( {data: "email", email: "invalid-facebook-id"} );
+                    return;
                 }
-                } catch(err){}
-            }
-            if(!anchorOfInterest) {
-                resolve( {data: "email", email: "N/A"} );
-            } else {
-                var email = anchorOfInterest.children[0].textContent;
-                console.log("[SCRAPPER] got email : "+email);
-                resolve( {data: "email", email: email } );
-            }
-        }, 3000);
-    })
+    
+                var a = document.getElementsByTagName("a");
+                var anchorOfInterest = null;
+                for(var i = 0; i < a.length; i++) {
+                    try{
+                        if(a[i].getAttribute("href").includes("@")){
+                            console.log(a[i].getAttribute("href"));
+                            anchorOfInterest = a[i]; 
+                        }
+                    } catch(err){}
+                }
+                if(!anchorOfInterest || anchorOfInterest == null) {
+                    resolve( {data: "email", email: "N/A"} );
+                } else {
+                    var email = anchorOfInterest.children[0].textContent;
+                    console.log("[SCRAPPER] got email : "+email);
+                    resolve( {data: "email", email: email } );
+                }
+            }, 3000);
+        })
+    }
 }
 
 var onGetProfiles = async () => {
