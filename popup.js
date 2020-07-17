@@ -1,6 +1,7 @@
 /* vars */
 let startButton  = document.getElementById("start");
 let stopButton   = document.getElementById("stop");
+let resumeButton = document.getElementById("resume");
 let zipCodeInput = document.getElementById("zipCode");
 let running      = document.getElementById("on-running");
 let stopped      = document.getElementById("on-stopped");
@@ -41,6 +42,9 @@ stopButton.addEventListener("click", () => {
     chrome.runtime.sendMessage({stop: true});
 });
 
+resumeButton.addEventListener('click', () => {
+    chrome.runtime.sendMessage({resume: true});
+})
 
 chrome.runtime.onMessage.addListener((req, sender, sendResponse)=>{
     if(req.msg === "info") {

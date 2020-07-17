@@ -70,7 +70,7 @@ var scrapeProfile = () => {
 
                 var name = document.getElementsByClassName("ctcd-user-name")[0].innerText;
                 console.log("[SCRAPPER][SCRAPEPROFILE] Found Name : "+name);
-                var zipCode = document.getElementsByClassName("postal-code")[0].innerText;
+                var zipCode =  document.getElementsByClassName("postal-code").length > 0 ? document.getElementsByClassName("postal-code")[0].innerText : "N/A";
                 console.log("[SCRAPPER][SCRAPEPROFILE] Found zip : "+zipCode);
 
                 scrollEffect();
@@ -123,12 +123,10 @@ var onGetEmail = async () => {
     if(window.document.readyState === "complete") {
         return new Promise( resolve => {
             setTimeout(()=>{
-    
                 if(window.document.title == "Page Not Found") {
                     resolve( {data: "email", email: "invalid-facebook-id"} );
                     return;
                 }
-    
                 var a = document.getElementsByTagName("a");
                 var anchorOfInterest = null;
                 for(var i = 0; i < a.length; i++) {
@@ -142,7 +140,7 @@ var onGetEmail = async () => {
                 if(!anchorOfInterest || anchorOfInterest == null) {
                     resolve( {data: "email", email: "N/A"} );
                 } else {
-                    var email = anchorOfInterest.children[0].textContent;
+                    var email = anchorOfInterest.children.length > 0 ? anchorOfInterest.children[0].textContent : "N/A";
                     console.log("[SCRAPPER] got email : "+email);
                     resolve( {data: "email", email: email } );
                 }

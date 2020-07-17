@@ -91,6 +91,11 @@ chrome.runtime.onMessage.addListener((req, sender, sendResponse) => {
         profilesData = [];
         pageNum = 1;
 
+        // clear storage 
+        chrome.storage.local.clear(()=>{
+            console.log("[BACKEND] END OF SEARCH PAGE, Storage cleared");
+        });
+
         // check if we are on zillow and on real estate agent page
         chrome.tabs.query({ active: true }, tabs => {
             let tab = tabs[0];
@@ -122,6 +127,19 @@ chrome.runtime.onMessage.addListener((req, sender, sendResponse) => {
         running = false;
         messagePort.disconnect();
         messagePort.onDisconnect.removeListener(event);
+    }
+
+    if(req.resume === true) {
+        console.log("[*] Resuming ... ");
+        chrome.storage.local.get(['page', 'zip', 'profiles'], (result) => {
+            console.log("[*] Got data : page -> "+result.page+" zip : "+result.zip+" profiles : ",result.profiles);
+
+            pageNum = result.page;
+            zipCode = result.zip;
+            profiles = result.profiles;
+
+            iterateThroughProfiles();
+        }); 
     }
 });
 
@@ -415,6 +433,7 @@ function changeTab(link) {
 
 function iterateThroughProfiles() {
     if (profiles.length > 0) {
+        if(!running) running = true;
         console.log("[BACKEND]:[IterateThroughProfiles] Iterating through profiles ... ");
         var link = profiles.pop();
         console.log("[BACKEND]:[IterateThroughProfiles] Got link : " + link);
@@ -443,6 +462,7 @@ function notifyPopUp() {
 }
 
 function goToSearchPage() {
+    if(!running) running = true;
     console.log("go to search page called")
     // reset values 
     profiles = [];
@@ -452,7 +472,7 @@ function goToSearchPage() {
         if(pageNum > 25) {
             chrome.storage.local.clear(()=>{
                 console.log("[BACKEND] END OF SEARCH PAGE, Storage cleared");
-            })
+            });
             return;
         }
         var searchPage = searchUrl + "?page=" + pageNum;
