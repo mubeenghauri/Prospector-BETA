@@ -140,7 +140,7 @@ var onGetEmail = async () => {
                 if(!anchorOfInterest || anchorOfInterest == null) {
                     resolve( {data: "email", email: "N/A"} );
                 } else {
-                    var email = anchorOfInterest.children.length > 0 ? anchorOfInterest.children[0].textContent : "N/A";
+                    var email = anchorOfInterest.children[0].textContent    ;
                     console.log("[SCRAPPER] got email : "+email);
                     resolve( {data: "email", email: email } );
                 }
