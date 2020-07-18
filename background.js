@@ -266,7 +266,7 @@ function registerMessageListener() {
                     // if our tempObj has been assigned, and we get jsonObj 
                     // with same values, skip below code
                     console.log("[BACKEND][PROFILE] recieved dupplicate : " + jsonObj.name);
-                    console.log("ProfileData = ", profilesData);
+                    console.log("ProfileData = ", profileData);
                     iterateThroughProfiles();
                     return;
                 }
