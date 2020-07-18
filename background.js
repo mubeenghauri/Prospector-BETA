@@ -476,7 +476,7 @@ function goToSearchPage() {
             return;
         }
 
-        if(searchUrl === "" || !searchUrl) {
+        if( searchUrl.includes("chrome") || searchUrl === "" || !searchUrl) {
             resolveSearchUrl();
         }
 
