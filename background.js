@@ -475,6 +475,11 @@ function goToSearchPage() {
             });
             return;
         }
+
+        if(searchUrl === "" || !searchUrl) {
+            resolveSearchUrl();
+        }
+
         var searchPage = searchUrl + "?page=" + pageNum;
         console.log("[GOTONEXTPAGE] Going to search page " + searchPage);
         changeTab(searchPage);
