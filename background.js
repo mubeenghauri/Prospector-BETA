@@ -475,7 +475,7 @@ function goToSearchPage() {
     profiles = [];
     profilesData = [];
     tempObj = "";
-    return new Promise(resolves => {
+    return new Promise(async resolves => {
         if(pageNum > 25) {
             chrome.storage.local.clear(()=>{
                 console.log("[BACKEND] END OF SEARCH PAGE, Storage cleared");
