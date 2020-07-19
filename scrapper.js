@@ -57,7 +57,7 @@ var scrapeProfile = () => {
                             .split(' ')[0], 0);
             scrollEffect();
             console.log("[SCRAPPER][SCRAPEPROFILE] sales : "+saleTag);
-            if(saleTag >= 10) {
+            if(saleTag >= 4 && saleTag <= 12) {
                 // we have 10 or more sales
                 // extract info needed
                 console.log("[SCRAPPER][SCRAPEPROFILE] have 10 or more sales");
@@ -67,6 +67,8 @@ var scrapeProfile = () => {
                 var isPremium = document.getElementsByClassName("ctcd-agent-type zsg-content-item").length > 0 ? true : false;
 
                 scrollEffect();
+
+
 
                 var name = document.getElementsByClassName("ctcd-user-name")[0].innerText;
                 console.log("[SCRAPPER][SCRAPEPROFILE] Found Name : "+name);
@@ -103,7 +105,8 @@ var scrapeProfile = () => {
                     "zipCode": zipCode,
                     "fbUrl": fbUrl,
                     "linkedIn": linkedinUrl,
-                    "website": website
+                    "website": website,
+                    "listings": saleTag
                 };
 
                 console.log("[SCRAPPER][SCRAPEPROFILE] Extracted Data : "+JSON.stringify(data));
