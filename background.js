@@ -484,7 +484,9 @@ function goToSearchPage() {
         }
 
         if( searchUrl.includes("chrome") || searchUrl === "" || !searchUrl) {
-            resolveSearchUrl();
+            console.log("[*] While changing search page, got url: "+searchUrl);
+            console.log("[*] Resolving Url ...");
+            var a = await resolveSearchUrl();
         }
 
         var searchPage = searchUrl + "?page=" + pageNum;
