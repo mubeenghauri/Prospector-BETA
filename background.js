@@ -18,7 +18,8 @@
  *                      "fbUrl"     : fbUrl,
  *                      "email"     : email,
  *                      "website"   : website.com.,
- *                      "linkedIn"  : linkedin.com
+ *                      "linkedIn"  : linkedin.com,
+ *                      "listings"  : listing
  *                  }
  *      - [BUG] There is an issue with synchronization of message,              [X] 
  *              somehow, make messaging synchronus, while no 
