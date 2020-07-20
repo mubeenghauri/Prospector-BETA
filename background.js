@@ -62,6 +62,7 @@ var profileData = [];           /* List of all data scrapped */
 var zipCode = ""                /* Currently processing zipcode */
 var pageNum = 1;                /* page number currently at */
 var searchUrl = "";
+var allZips  = []               /* List of all zipcodes to go through */
 var profileRecieved = false;
 var server = "http://localhost:5000/scrapped";
 
@@ -103,7 +104,8 @@ chrome.runtime.onMessage.addListener((req, sender, sendResponse) => {
             console.log("At tab " + tab.url);
             if (tab.url.includes("zillow.com") && tab.url.includes("real-estate-agent")) {
                 if (!running) { running = true; }
-                zipCode = req.zipCode;
+                allZips = req.zipCodes;
+                zipCode = allZips.pop();
                 console.log("[Backend] got zipcode : " + zipCode);
                 pageNum = req.page;
                 console.log("[Backend] got page number : " + pageNum);
