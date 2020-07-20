@@ -20,10 +20,10 @@ startButton.addEventListener('click', () => {
 	console.log("Start button slicked");
     // Send a message to the active tab
     // alert("here !!");
-    var zips = zipCodeInput.value.spllit(',');
+    var zips = zipCodeInput.value.split(',');
     var page = pageNum.value.length === 0 ? "1" : pageNum.value;
     running.hidden = false; stopped.hidden = true;
-    if(parseInt(zip) != NaN) {
+    if(zips.length != 0) {
         zipCodeInput.placeholder = "Scrapping in Progress .... ";
         chrome.runtime.sendMessage({clicked: true, zipCodes: zips, page: page});
     } else {
