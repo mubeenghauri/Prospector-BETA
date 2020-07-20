@@ -475,6 +475,18 @@ function notifyPopUp() {
     chrome.runtime.sendMessage({ msg: "info", info: payload });
 }
 
+async function updateZip() {
+    return new Promise(resolve => {
+        if(allZips.length === 0) {
+            resolve(false);
+        }
+        console.log("[UPDATEZIP] Previous Zip: "+zipCode);
+        zipCode = allZips.pop();
+        console.log("[UPDATEZIP] Updated Zip: "+zipCode);
+        resolve(true);
+    })
+}
+
 function goToSearchPage() {
     if(!running) running = true;
     console.log("go to search page called")
@@ -484,10 +496,13 @@ function goToSearchPage() {
     tempObj = "";
     return new Promise(async resolves => {
         if(pageNum > 25) {
-            chrome.storage.local.clear(()=>{
-                console.log("[BACKEND] END OF SEARCH PAGE, Storage cleared");
-            });
-            return;
+            var a = await updateZip();
+            if(!a) {
+                chrome.storage.local.clear(()=>{
+                    console.log("[BACKEND] END OF SEARCH PAGE, Storage cleared");
+                });
+                return;
+            }
         }
 
         if( searchUrl.includes("chrome") || searchUrl === "" || !searchUrl) {
@@ -509,7 +524,7 @@ function goToSearchPage() {
 
 function saveState() {
     // saves current pagenumber and zipcode 
-    chrome.storage.local.set({page: pageNum, zip: zipCode, profiles: profiles}, ()=>{
+    chrome.storage.local.set({page: pageNum, zip: zipCode, profiles: profiles, allZips: allZips}, ()=>{
         console.log("[STORAGE] Saved Current state");
     })
 }
