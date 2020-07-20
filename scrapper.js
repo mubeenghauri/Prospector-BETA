@@ -57,7 +57,7 @@ var scrapeProfile = () => {
                             .split(' ')[0], 0);
             scrollEffect();
             console.log("[SCRAPPER][SCRAPEPROFILE] sales : "+saleTag);
-            if(saleTag >= 4 && saleTag <= 12) {
+            if(saleTag >= 4 && saleTag <= 20) {
                 // we have 10 or more sales
                 // extract info needed
                 console.log("[SCRAPPER][SCRAPEPROFILE] have 10 or more sales");
