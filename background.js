@@ -133,22 +133,7 @@ chrome.runtime.onMessage.addListener((req, sender, sendResponse) => {
     }
 
     if(req.resume === true) {
-        console.log("[*] Resuming ... ");
-        chrome.storage.local.get(['page', 'zip', 'profiles'], (result) => {
-            console.log("[*] Got data : page -> "+result.page+" zip : "+result.zip+" profiles : ",result.profiles);
-
-            if(!result){
-                alert("Nothing to resume from");
-                console.log("[RESUME] Could not find previous data ... resume FAILED");
-                return; 
-            }
-
-            pageNum = result.page;
-            zipCode = result.zip;
-            profiles = result.profiles;
-
-            iterateThroughProfiles();
-        }); 
+        resume();
     }
 });
 
