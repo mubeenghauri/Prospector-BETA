@@ -36,13 +36,13 @@
  *          (additional val => website & linkedin, if available) 
  *      - re-format facebook url to redirect directly to about page             [X]
  *      - use zillow api to resolve search page url.                            [X]
+ *      - [BUMP MAJOR] add google sheets integration                            [X]
+ *      - [BUMP MINOR] Introduce a backup mechanism such that it                [X]
+ *        keeps track of current page(number) and zipcode, and 
+ *        collection of profiles remaining in that page. So that
+ *        if unexpectedly closed, previous state is resumed
  * 
  * TODO:
- *          - [BUMP MAJOR] add google sheets integration
- *          - [BUMP MINOR] Introduce a backup mechanism such that it
- *            keeps track of current page(number) and zipcode, and 
- *            collection of profiles remaining in that page. So that
- *            if unexpectedly closed, previous state is resumed
  *          - [POPUP] make popup persistent ?
  *          - accept zipcode in bulk and iterate through them....
  *          - REFACTOR code, use 'javasctipt OOP' for scrapper and backend implementation.
