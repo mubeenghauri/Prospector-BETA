@@ -480,6 +480,7 @@ async function updateZip() {
         if(allZips.length === 0) {
             resolve(false);
         }
+        page = 1;
         console.log("[UPDATEZIP] Previous Zip: "+zipCode);
         zipCode = allZips.pop();
         console.log("[UPDATEZIP] Updated Zip: "+zipCode);
