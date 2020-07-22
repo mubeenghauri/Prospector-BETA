@@ -41,10 +41,10 @@
  *        keeps track of current page(number) and zipcode, and 
  *        collection of profiles remaining in that page. So that
  *        if unexpectedly closed, previous state is resumed
+ *      - accept zipcode in bulk and iterate through them....                   [X]
  * 
  * TODO:
  *          - [POPUP] make popup persistent ?
- *          - accept zipcode in bulk and iterate through them....
  *          - REFACTOR code, use 'javasctipt OOP' for scrapper and backend implementation.
  *        
  * NOTES: this version, almost working, have to add a fix around to use case => (
@@ -64,6 +64,7 @@ var pageNum = 1;                /* page number currently at */
 var searchUrl = "";
 var allZips  = []               /* List of all zipcodes to go through */
 var profileRecieved = false;
+var zipChanged = false;
 var server = "http://localhost:5000/scrapped";
 
 /** Start: Registering event listeners **/
@@ -371,6 +372,7 @@ function requestSender(data) {
         xml.setRequestHeader("Content-Type", "application/json");
         xml.send(data);
         console.log("[REQUEST SENDER] sent data :", data);
+        resolve(true);
     })
 }
 
@@ -477,13 +479,16 @@ function notifyPopUp() {
 
 async function updateZip() {
     return new Promise(resolve => {
-        if(allZips.length === 0) {
-            resolve(false);
+        if( !zipChanged ) {
+            zipChanged = true;
+            if(allZips.length === 0) {
+                resolve(false);
+            }
+            console.log("[UPDATEZIP] Previous Zip: "+zipCode);
+            zipCode = allZips.pop();
+            console.log("[UPDATEZIP] Updated Zip: "+zipCode);
+            resolve(true);
         }
-        console.log("[UPDATEZIP] Previous Zip: "+zipCode);
-        zipCode = allZips.pop();
-        console.log("[UPDATEZIP] Updated Zip: "+zipCode);
-        resolve(true);
     })
 }
 
@@ -496,7 +501,9 @@ function goToSearchPage() {
     tempObj = "";
     return new Promise(async resolves => {
         if(pageNum > 25) {
-            var a = await updateZip();
+            if(!zipChanged) {
+                var a = await updateZip();
+            }
             if(!a) {
                 chrome.storage.local.clear(()=>{
                     console.log("[BACKEND] END OF SEARCH PAGE, Storage cleared");
