@@ -69,15 +69,6 @@ var server = "http://localhost:5000/scrapped";
 
 /** Start: Registering event listeners **/
 
-/**
- * Hack for injecting scripts ?? 
- * source : https://discourse.mozilla.org/t/event-listeners-added-multiple-times/9971/4
- */
-// chrome.runtime.onConnect.addListener(
-//     port => ports.add(port) === port.onDisconnect.addListener(() => ports.delete(port))
-// );
-
-
 
 /**
  * fired up by message from popup.js
@@ -159,8 +150,6 @@ chrome.tabs.onUpdated.addListener((tabid, changeInfo, tab) => {
         } else {
             var url = tab.url;
             if (url.includes("profile")) {
-                // TODO: try not to inject script to every tab ;/
-                //injectToCurrent();    [NOTES: WORKS WITHOUT IT TOO, REMOVE IT MAYBE?]
                 messagePort = chrome.tabs.connect(tab.id, { name: "main-port" });
                 registerMessageListener();
                 // ask scrapper to scrape of required info and get it here.
@@ -320,7 +309,7 @@ function registerMessageListener() {
 
 function resume() {
     console.log("[*] Resuming ... ");
-    chrome.storage.local.get(['page', 'zip', 'profiles'], (result) => {
+    chrome.storage.local.get(['page', 'zip', 'profiles', 'allZips'], (result) => {
         console.log("[*] Got data : page -> "+result.page+" zip : "+result.zip+" profiles : ",result.profiles);
 
         if(!result){
@@ -350,15 +339,8 @@ function resolveSearchUrl() {
                 }
                 var data = await res.json();
                 console.log("[ResolveSearchUrl] Got Data : ",data);
-                
-                // if(data.url[data.url.length-1] === "/") {
-                //     var url = "https://www.zillow.com"+data.url.slice(0, data.url.length-1);
-                // } else {
-                    var url = "https://www.zillow.com"+data.url;
-                // }
-
+                var url = "https://www.zillow.com"+data.url;
                 console.log("[ResolveSearchPage] Constructed url : "+url);
-
                 searchUrl = url;
                 resolve(true);
             });
@@ -462,11 +444,6 @@ function iterateThroughProfiles() {
     } else {
         console.log("[BACKEND]:[IterateThroughProfiles] Profiles is empty.");
         (async () => {
-            // resetint these vars to avoid memory 
-            // bottleneck 
-            // profiles = [];
-            // tempObj = "";
-            // profilesData = [];
             await goToSearchPage();
         })();
     }
@@ -501,8 +478,11 @@ function goToSearchPage() {
     tempObj = "";
     return new Promise(async resolves => {
         if(pageNum > 25) {
+            var a;
             if(!zipChanged) {
-                var a = await updateZip();
+                a = await updateZip();
+                await resolveSearchUrl();
+                pageNum = 1;
             }
             if(!a) {
                 chrome.storage.local.clear(()=>{
